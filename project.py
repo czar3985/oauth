@@ -39,6 +39,27 @@ def showLogin():
     return render_template('login.html', STATE = state)
 
 
+def createUser(login_session):
+    newUser = User(name = login_session['username'], email = login_session['email'], picture = login_session['picture'])
+    session.add(newUser)
+    session.commit()
+    user = session.query(User).filter_by(email = login_session['email']).one()
+    return user.id
+
+
+def getUserInfo(user_id):
+    user = session.query(User).filter_by(id = user_id).one()
+    return user
+
+
+def getUserID(email):
+    try:
+        user = session.query(User).filter_by(email = email).one()
+        return user.id
+    except:
+        return None
+
+
 @app.route('/gconnect', methods=['POST'])
 def gconnect():
     # Validate state token
@@ -110,6 +131,13 @@ def gconnect():
     login_session['username'] = data['name']
     login_session['picture'] = data['picture']
     login_session['email'] = data['email']
+
+    # See if the user exists in the database or create a new entry
+    userId = getUserID(login_session['email'])
+    if userId == None:
+        login_session['user_id'] = createUser(login_session)
+    else:
+        login_session['user_id'] = userId
 
     output = ''
     output += '<h1>Welcome, '
@@ -186,8 +214,7 @@ def newRestaurant():
   if 'username' not in login_session:
       return redirect(url_for('showLogin'))
   if request.method == 'POST':
-      user = session.query(User).filter_by(email = login_session['email']).one()
-      newRestaurant = Restaurant(name = request.form['name'], user_id = user.id)
+      newRestaurant = Restaurant(name = request.form['name'], user_id = login_session['user_id'])
       session.add(newRestaurant)
       flash('New Restaurant %s Successfully Created' % newRestaurant.name)
       session.commit()
@@ -292,27 +319,6 @@ def deleteMenuItem(restaurant_id,menu_id):
         return redirect(url_for('showMenu', restaurant_id = restaurant_id))
     else:
         return render_template('deleteMenuItem.html', item = itemToDelete)
-
-
-def createUser(login_session):
-    newUser = User(name = login_session['username'], email = login_session['email'], picture = login_session['picture'])
-    session.add(newUser)
-    session.commit()
-    user = session.query(User).filter_by(email = login_session['email']).one()
-    return user.id
-
-
-def getUserInfo(user_id):
-    user = session.query(User).filter_by(id = user_id).one()
-    return user
-
-
-def getUserID(email):
-    try:
-        user = session.query(User).filter_by(email = email).one()
-        return user.id
-    except:
-        return None
 
 
 if __name__ == '__main__':
